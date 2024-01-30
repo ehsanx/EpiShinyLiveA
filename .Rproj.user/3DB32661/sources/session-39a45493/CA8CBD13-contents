@@ -2,15 +2,14 @@ library(shiny)
 library(nhanesA)
 library(DataExplorer)
 library(Hmisc)
-library(psych)
-library(DT)
+library(dplyr)
+library(tableone)
 
 # UI with sidebar layout
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
-      # Use HTML or tags$ functions for static notes
-      HTML("<p>We will work with Demographic data component from the National Health and Nutrition Examination Survey (NHANES). We will download them directy from the US CDC website: https://wwwn.cdc.gov/Nchs/Nhanes/. </p>"),
+      HTML("<p>We will work with the Demographic data component from the National Health and Nutrition Examination Survey (NHANES). We will download them directly from the US CDC website: <a href='https://wwwn.cdc.gov/Nchs/Nhanes/'>https://wwwn.cdc.gov/Nchs/Nhanes/</a>.</p>"),
       selectInput("dataset", "Select NHANES Cycle:",
                   choices = c("1999-2000" = "DEMO",
                               "2001-2002" = "DEMO_B",
@@ -32,7 +31,6 @@ ui <- fluidPage(
                  textOutput("subsetStatus")
         ),
         tabPanel("Visually Exploring",
-                 # Use tags$ functions for static notes within tab panels
                  tags$p("DataExplorer package is used."),
                  selectInput("plotType", "Select Plot Type:",
                              choices = c("Introduction" = "intro",
@@ -43,10 +41,16 @@ ui <- fluidPage(
                  uiOutput("selectedPlot")
         ),
         tabPanel("Numerically Exploring",
-                 # Use tags$ functions for static notes within tab panels
                  tags$p("Hmisc package is used."),
                  verbatimTextOutput("hmiscOutput")
+        ),
+        tabPanel("Table 1",
+                 tags$p("Create Table 1 using the tableone package."),
+                 selectInput("strataVar", "Select Strata Variable:", choices = c("None" = "None"), selected = "None"),
+                 actionButton("createTable", "Create Table 1"),
+                 verbatimTextOutput("tableOneText")  # Add this line to display the printed TableOne object
         )
+        
       )
     )
   )
@@ -54,9 +58,10 @@ ui <- fluidPage(
 
 
 
+
 # Server
 server <- function(input, output, session) {
-  rv <- reactiveValues(data = NULL, downloading = FALSE)
+  rv <- reactiveValues(data = NULL, subset = NULL, translatedSubset = NULL, downloading = FALSE)
   
   observeEvent(input$loadData, {
     withProgress(message = 'Downloading selected dataset. Please wait...', {
@@ -107,7 +112,7 @@ server <- function(input, output, session) {
   })
   
   output$subsetStatus <- renderText({
-    paste("Subset created with", length(input$selectedVars), "variables.")
+    paste("Subset created with", length(input$selectedVars), "variables. Selecting more variables will result in more translation/recoding time.")
   })
   
   output$selectedPlot <- renderUI({
@@ -129,6 +134,51 @@ server <- function(input, output, session) {
   
   # Hmisc summary using the translated subset
   output$hmiscOutput <- renderPrint({ describe(translatedSubset()) })
+  
+  observe({
+    req(input$selectedVars)  # Ensure that the selected variables are available
+    req(translatedSubset())
+    
+    # Identify categorical variables by checking if they are factors or if they have a limited number of unique values
+    categoricalVars <- sapply(translatedSubset()[, input$selectedVars, drop = FALSE], function(x) {
+      is.factor(x) || length(unique(x)) <= 10  # Adjust the threshold as needed
+    })
+    
+    # Filter the selected variables to include only those identified as categorical
+    categoricalVarNames <- names(categoricalVars)[categoricalVars]
+    
+    # Update the choices for the strataVar selectInput to include "None" and the filtered categorical variables
+    updatedChoices <- c("None", categoricalVarNames)
+    updateSelectInput(session, "strataVar", choices = updatedChoices, selected = "None")
+  })
+  
+  
+  # Create Table 1 when the "createTable" button is clicked
+  observeEvent(input$createTable, {
+    req(translatedSubset())
+    strata <- if(input$strataVar != "None" && input$strataVar %in% names(translatedSubset())) {
+      input$strataVar
+    } else {
+      NULL  # Explicitly set strata to NULL if "None" is selected or the variable isn't in the data frame
+    }
+    
+    vars <- setdiff(names(translatedSubset()), strata)  # Exclude strata variable from vars
+    
+    # Call CreateTableOne with or without stratification based on strata variable selection
+    tab1 <- if(is.null(strata)) {
+      CreateTableOne(data = translatedSubset(), vars = vars, includeNA = TRUE, test = FALSE, smd = FALSE)
+    } else {
+      CreateTableOne(data = translatedSubset(), vars = vars, strata = strata, includeNA = TRUE, test = FALSE, smd = FALSE)
+    }
+    
+    # Use renderPrint to display the output of print(tab1, showAllLevels = TRUE)
+    output$tableOneText <- renderPrint({
+      print(tab1, showAllLevels = TRUE)
+    })
+  })
+  
+  
+  
   
 }
 

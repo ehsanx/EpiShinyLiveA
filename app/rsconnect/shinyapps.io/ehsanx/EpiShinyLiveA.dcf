@@ -1,0 +1,12 @@
+name: EpiShinyLiveA
+title: EpiShinyLiveA
+username: ehsanx
+account: ehsanx
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11069615
+bundleId: 8197330
+url: https://ehsanx.shinyapps.io/EpiShinyLiveA/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
