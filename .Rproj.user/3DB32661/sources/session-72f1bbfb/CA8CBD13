@@ -1,0 +1,24 @@
+{
+    "id": "CA8CBD13",
+    "path": "E:/GitHub/EpiShinyLiveA/app/app.R",
+    "project_path": "app/app.R",
+    "type": "r_source",
+    "hash": "3148731822",
+    "contents": "",
+    "dirty": false,
+    "created": 1706584642582.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1706584465,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1706584465,
+    "read_only": false,
+    "read_only_alternatives": []
+}
